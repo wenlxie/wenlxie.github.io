@@ -1,37 +1,7 @@
-## Welcome to GitHub Pages
+# Welcome to my blog
 
-You can use the [editor on GitHub](https://github.com/wenlxie/wenlxie.github.io/edit/master/index.md) to maintain and preview the content for your website in Markdown files.
+## kubernetes
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+[kubernetes cgroup / docker cgroup /linux cgroup summary](https://github.com/wenlxie/wenlxie.github.io/blob/master/k8s_cgroup_memcg_test/kubernetes_Cgroup.pdf)
 
-### Markdown
-
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
-
-```markdown
-Syntax highlighted code block
-
-# Header 1
-## Header 2
-### Header 3
-
-- Bulleted
-- List
-
-1. Numbered
-2. List
-
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
-```
-
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
-
-### Jekyll Themes
-
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/wenlxie/wenlxie.github.io/settings). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
-
-### Support or Contact
-
-Having trouble with Pages? Check out our [documentation](https://help.github.com/categories/github-pages-basics/) or [contact support](https://github.com/contact) and we’ll help you sort it out.
+[Memory cgroup test for kernel 4.12-5 and 3.10.0](https://github.com/wenlxie/wenlxie.github.io/blob/master/k8s_cgroup_memcg_test/memcg_test_for_kernel-4.12-5_and_kernel_3.10.0.pdf)
