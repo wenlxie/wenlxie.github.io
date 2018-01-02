@@ -2,7 +2,7 @@
 
 ## kubernetes
 
-- A summary for cpu/memory resource control.
+- A summary for kubernetes cpu/memory resource control.
 
   k8s 1.6 ---- docker ---- linux cgroup
 
