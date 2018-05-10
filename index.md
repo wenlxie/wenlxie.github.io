@@ -19,5 +19,6 @@
   
   
  ##others
- - You may want to check your running enviroment in your APP. (Like you want to check you application runs inside a container or a vm) You can visist the link: [puppet facter project](https://github.com/puppetlabs/facter/blob/fc6036de9b4159a5f979d6c0216d20d86437f930/lib/src/facts/linux/virtualization_resolver.cc#L52)
+ - Check application's  running enviroment.
+ [puppet facter project](https://github.com/puppetlabs/facter/blob/fc6036de9b4159a5f979d6c0216d20d86437f930/lib/src/facts/linux/virtualization_resolver.cc#L52)
   
