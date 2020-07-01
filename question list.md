@@ -45,9 +45,9 @@ If we just check the stack, then it is a big misleading because tcp_drop() is ca
 gcc has a parameter to optimise static function to be inline, but tcp_validate_incoming() is called twice. 
 
 
-tcp_rcv_established() ---> tcp_validate_incoming()  
+tcp_v4_do_rcv() --->tcp_rcv_established() ---> tcp_validate_incoming()  
 
-tcp_rcv_state_process() --->  tcp_validate_incoming() 
+tcp_v4_do_rcv() ---> tcp_rcv_state_process() --->  tcp_validate_incoming() 
 
 
 ```
