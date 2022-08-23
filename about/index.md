@@ -20,9 +20,8 @@ Linux kernel、Docker/Kubernetes、Networking、Distributed Storage...
 
 ### Contact Me：
 
-网站：[{{ site.name }}]({{ site.url }})
-
-邮箱：[{{ site.email }}](mailto:{{ site.email }})
+Website: [{{ site.url }}]
+Mail：[{{ site.email }}](mailto:{{ site.email }})
 
 GitHub：[http://github.com/{{ site.github }}](http://github.com/{{ site.github }})
 
