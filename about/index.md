@@ -4,6 +4,8 @@ layout: page
 comments: no
 ---
 
+Stay hungry, stay foolish
+
 ---
 ### Self Introduction
 
@@ -20,7 +22,7 @@ Linux kernel、Docker/Kubernetes、Networking、Distributed Storage...
 
 ### Contact Me：
 
-Website: ([{{ site.url }}])
+Website：([{{ site.url }}])
 
 Mail：[{{ site.email }}](mailto:{{ site.email }})
 
