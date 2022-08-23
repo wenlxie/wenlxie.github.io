@@ -1,0 +1,160 @@
+## Purpose
+- Use MTR to trace the packet path from pod to pod 
+
+## Issues
+- When try to run mtr inside src pod's network namespace, it shows following error 
+
+```
+mtr -T xxxxx.com
+
+My traceroute  [v0.93]
+yyyyy.com (10.xxx.xxx.xxx)                                                                                                                                           2022-08-17T09:28:24+0000
+Keys:  Help   Display mode   Restart statistics   Order of fields   quit
+                                                                            Packets               Pings
+ Host                                                                     Loss%   Snt   Last   Avg  Best  Wrst StDev
+ 1. (no route to host)
+
+```
+
+But if we use UDP/ICMP to  probe the path instead of TCP, then mtr can show the full path as expectation
+```
+ICMP
+root@test:~/mtr# ./mtr xxxxx.com
+Start: 2022-08-18T09:12:07+0000
+HOST: test                        Loss%   Snt   Last   Avg  Best  Wrst StDev
+  1.|-- xxxxxx                    0.0%    10    0.1   0.1   0.1   0.2   0.0
+  2.|-- xxxxxx                    0.0%    10   19.6  18.4  11.2  22.8   4.3
+  3.|-- xxxxxx                    0.0%    10    0.9   1.1   0.8   1.7   0.3
+  4.|-- xxxxxx                    0.0%    10    0.3   0.3   0.3   0.3   0.0
+  5.|-- xxxxxx                    0.0%    10   14.7  15.0  11.8  22.4   2.9
+  6.|-- xxxxxx                    0.0%    10    3.2   1.8   0.9   4.9   1.4
+  7.|-- xxxxxx                    0.0%    10    0.8   3.1   0.4  14.2   4.5
+  8.|-- xxxxxx                    0.0%    10   15.4  16.4  15.0  21.1   2.1
+  9.|-- xxxxxx                    0.0%    10   12.1  15.1  12.0  30.5   6.5
+ 10.|-- xxxxxx                    0.0%    10   17.3  17.2  17.2  17.3   0.0
+ 11.|-- xxxxxx                    0.0%    10   15.1  15.1  15.1  15.2   0.0
+ 12.|-- xxxxxx                    0.0%    10   14.5  14.4  14.3  14.5   0.1
+ 13.|-- xxxxxx                    0.0%    10   12.0  15.7  12.0  19.7   2.7
+ 14.|-- xxxxxx                    0.0%    10   14.3  14.3  14.2  14.4   0.1
+
+```
+
+```
+root@test:~/mtr# ./mtr xxxxxxx.com  -u
+Start: 2022-08-18T09:14:50+0000
+HOST: test                        Loss%   Snt   Last   Avg  Best  Wrst StDev
+  1.|-- xxxx                      0%         10    0.2   0.2   0.1   0.2   0.0
+  2.|-- xxxx                      0%         10   99.1  35.7   3.9 103.2  36.5
+  3.|-- xxxx                      0%         10    1.0   1.0   0.9   1.2   0.1
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+  4.|-- xxxx                      0%         10    0.3   0.3   0.3   0.4   0.0
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%            
+        xxxx                      0%         
+        xxxx                      0%         
+  5.|-- xxxx                      0%         10   23.1  67.2   4.9 325.7 101.3
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+  6.|-- xxxx                      0%         10    1.2   5.0   1.0  20.9   6.4
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+  7.|-- xxxx                      0%         10    5.6   3.4   0.4  15.2   4.7
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+  8.|-- xxxx                      0%         10   11.7  16.1  11.1  29.2   5.8
+        xxxx                      0%         
+        xxxx                      0%         
+  9.|-- xxxx                      0%         10   11.5  15.7  11.4  25.0   4.2
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+ 10.|-- xxxx                      0%         10   14.4  14.9   7.9  19.4   3.3
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+ 11.|-- xxxx                      0%         10   15.1  13.8  10.8  16.6   2.2
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+ 12.|-- xxxx                      0%         10   11.5  12.9  10.8  17.3   2.1
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+        xxxx                      0%         
+ 13.|-- xxxx                      0%         10   12.3  27.6  11.0 117.4  32.0
+        xxxx                      0%         
+        xxxx                      0%         
+ 14.|-- xxxx                      0%         10   16.6  14.2  10.8  16.6   1.6
+
+```
+
+## Something happened when use TCP
+
+Use tcpdump to capture for what happened when use TCP
+
+```
+03:09:02.112033 IP 10.xxx.xxx.xxx.35564 > xxxxxxxxxxx.com.http: Flags [S], seq 1656127004, win 64240, options [mss 1460,sackOK,TS val 784970555 ecr 0,nop,wscale 8], length 0
+
+03:09:02.135481 IP yyyyyyyyyy.com > 10.18.196.21: ICMP xxxxxxxxxxx.com unreachable - need to frag (mtu 9000), length 36
+
+```
+
+The yyyyyyyyyy.com replied an ICMP packet with error: `unreachable - need to frag (mtu 9000), length 36`  when it received an IP packet with TTL=1
+
+The formal packet should be: `ICMP time exceeded in-transit, length 72`
+
+So if we set the --first-ttl to bypass that hop, then TCP probe works fine.
+
+It is obviously that when mtr received an packet to indicate the IP is unreachable, then it will stop to do further probe 
+
+### Issues left
+- When there are ECMP paths exists, one path has this issue, does mtr continue to probe other pathes, or just stop? 
+  Not find an env to verify this, but need to check the code
+- Can mtr continue to do more found probe when it met this kind of issue.
+  Maintainer's reply: https://github.com/traviscross/mtr/issues/434#issuecomment-1220502725  
+- When use option --report to collect the reports, but the ECMP path info will be lost, need to upgrade MTR to higher version like 0.95
