@@ -455,6 +455,7 @@ crash> set 38029
 ```
 
 * Check for process 38030
+
 ```
  crash> set 38030
           PID: 38030
@@ -475,64 +476,65 @@ to print the stacks when the acquire/free the lock
 Lock ffff908f92a0a680 should be held by 38029 in xfs_iunlink_remove() but not released:
 
 ```
->   b'xfs_buf_trylock+0x1'
->   b'xfs_buf_get_map+0x51'
->   b'xfs_buf_read_map+0x47'
->   b'xfs_trans_read_buf_map+0xf6'
->   b'xfs_read_agi+0xd2'
->   b'xfs_iunlink_remove+0x9a'
->   b'xfs_rename+0x618'
->   b'xfs_vn_rename+0x104'
->   b'vfs_rename+0x6e5'
->   b'ovl_do_rename+0x47'
->   b'ovl_rename+0x5d5'
->   b'vfs_rename+0x6e5'
->   b'do_renameat2+0x576'
->   b'__x64_sys_rename+0x29'
->   b'do_syscall_64+0x84'
->   b'entry_SYSCALL_64_after_hwframe+0x49'
+   b'xfs_buf_trylock+0x1'
+   b'xfs_buf_get_map+0x51'
+   b'xfs_buf_read_map+0x47'
+   b'xfs_trans_read_buf_map+0xf6'
+   b'xfs_read_agi+0xd2'
+   b'xfs_iunlink_remove+0x9a'
+   b'xfs_rename+0x618'
+   b'xfs_vn_rename+0x104'
+   b'vfs_rename+0x6e5'
+   b'ovl_do_rename+0x47'
+   b'ovl_rename+0x5d5'
+   b'vfs_rename+0x6e5'
+   b'do_renameat2+0x576'
+   b'__x64_sys_rename+0x29'
+   b'do_syscall_64+0x84'
+   b'entry_SYSCALL_64_after_hwframe+0x49'
 ```
 
 ```
->   b'xfs_buf_trylock+0x1'
->   b'xfs_buf_get_map+0x51'
->   b'xfs_buf_read_map+0x47'
->   b'xfs_trans_read_buf_map+0xf6'
->   b'xfs_read_agi+0xd2'
->   b'xfs_iunlink_remove+0x9a'
->   b'xfs_rename+0x618'
->   b'xfs_vn_rename+0x104'
->   b'vfs_rename+0x6e5'
->   b'ovl_do_rename+0x47'
->   b'ovl_rename+0x5d5'
->   b'vfs_rename+0x6e5'
->   b'do_renameat2+0x576'
->   b'__x64_sys_rename+0x29'
->   b'do_syscall_64+0x84'
->   b'entry_SYSCALL_64_after_hwframe+0x49'
+   b'xfs_buf_trylock+0x1'
+   b'xfs_buf_get_map+0x51'
+   b'xfs_buf_read_map+0x47'
+   b'xfs_trans_read_buf_map+0xf6'
+   b'xfs_read_agi+0xd2'
+   b'xfs_iunlink_remove+0x9a'
+   b'xfs_rename+0x618'
+   b'xfs_vn_rename+0x104'
+   b'vfs_rename+0x6e5'
+   b'ovl_do_rename+0x47'
+   b'ovl_rename+0x5d5'
+   b'vfs_rename+0x6e5'
+   b'do_renameat2+0x576'
+   b'__x64_sys_rename+0x29'
+   b'do_syscall_64+0x84'
+   b'entry_SYSCALL_64_after_hwframe+0x49'
 ```
 
 
  The lock 0xffff908f993cc780 should also be held by 38030
   xfs_iunlink_remove() but not released:
 
+
 ```
->   b'xfs_buf_trylock+0x1'
->   b'xfs_buf_get_map+0x51'
->   b'xfs_buf_read_map+0x47'
->   b'xfs_trans_read_buf_map+0xf6'
->   b'xfs_read_agi+0xd2'
->   b'xfs_iunlink_remove+0x9a'
->   b'xfs_rename+0x618'
->   b'xfs_vn_rename+0x104'
->   b'vfs_rename+0x6e5'
->   b'ovl_do_rename+0x47'
->   b'ovl_rename+0x5d5'
->   b'vfs_rename+0x6e5'
->   b'do_renameat2+0x576'
->   b'__x64_sys_rename+0x29'
->   b'do_syscall_64+0x84'
->   b'entry_SYSCALL_64_after_hwframe+0x49'
+   b'xfs_buf_trylock+0x1'
+   b'xfs_buf_get_map+0x51'
+   b'xfs_buf_read_map+0x47'
+   b'xfs_trans_read_buf_map+0xf6'
+   b'xfs_read_agi+0xd2'
+   b'xfs_iunlink_remove+0x9a'
+   b'xfs_rename+0x618'
+   b'xfs_vn_rename+0x104'
+   b'vfs_rename+0x6e5'
+   b'ovl_do_rename+0x47'
+   b'ovl_rename+0x5d5'
+   b'vfs_rename+0x6e5'
+   b'do_renameat2+0x576'
+   b'__x64_sys_rename+0x29'
+   b'do_syscall_64+0x84'
+   b'entry_SYSCALL_64_after_hwframe+0x49'
 
 ```
 
