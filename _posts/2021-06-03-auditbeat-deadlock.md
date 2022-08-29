@@ -105,8 +105,12 @@ It will do setPID() operation before closing the netlink socket.
 setPID() makes the kernel send the audit info back to auditbeat, but since the auditbeat’s rcvbuf is full, it sleeps after holding the lock.
 Then other processes like sudo and cron want to send the messages to auditbeat will  also be stuck and become D.
 
-* Since auditbeat process is in Sleep status, so we can kill the auditbeat process to make the system recover.
+* Since auditbeat process is in Sleep status, 
+  so we can kill the auditbeat process to make the system recover.
 
 * How to fix
-There is an upstream issue for this in almost the same time: https://github.com/elastic/beats/issues/26031
+
+There is an upstream issue for this in almost the same time: 
+https://github.com/elastic/beats/issues/26031
+
 Fix for this:  https://github.com/elastic/beats/pull/26032
