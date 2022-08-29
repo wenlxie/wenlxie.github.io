@@ -70,7 +70,9 @@ From the disassemble code, we can see that the process become sleep and schedule
 
 ![](/assets/2021-06-03-auditbeat-deadlock-netlink-attachskb.png)
 
-The reason is sk->sk_rmem_alloc > sk->sk_rcvbuf, because we can see that the rmem of auditbeat is full by 'ss -f netlink -e|grep -i auditbeat'
+The reason is sk->sk_rmem_alloc > sk->sk_rcvbuf, because we can see that the rmem of auditbeat is full by 
+
+'ss -f netlink -e|grep -i auditbeat'
 
 
 ```
