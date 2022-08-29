@@ -439,6 +439,7 @@ This can help to debug
 ```
 
 * Check for process 38029
+
 ```
 crash> set 38029
           PID: 38029
@@ -466,6 +467,7 @@ crash> set 38029
 
  crash> struct xfs_buf.b_last_holder ffff908f92a0a680
    b_last_holder = 38029
+
 ```
 
 ## Check for where to get the lock
@@ -513,10 +515,8 @@ Lock ffff908f92a0a680 should be held by 38029 in xfs_iunlink_remove() but not re
    b'entry_SYSCALL_64_after_hwframe+0x49'
 ```
 
-
  The lock 0xffff908f993cc780 should also be held by 38030
   xfs_iunlink_remove() but not released:
-
 
 ```
    b'xfs_buf_trylock+0x1'
@@ -538,8 +538,9 @@ Lock ffff908f92a0a680 should be held by 38029 in xfs_iunlink_remove() but not re
 
 ```
 
-Looks like there are ABBA deadlock in this scenario.
+There is ABBA deadlock in this scenario.
  
+
 ## report this issue to the maintainer and get the fix
 
 Details: https://www.spinics.net/lists/linux-xfs/msg47556.html 
