@@ -11,10 +11,12 @@ excerpt: auditbeat deadlock
 User can't run sudo in their container
 
 ## Debug
-* There are lots of cron and sudo processes stuck in D stat
+* There are lots of cron and sudo processes stuck in D status
+
 ![](/assets/2021-06-03-auditbeat-deadlock-phenomenon.png)
 
 * Check the process’s stack.  Sudo and cron process will send audit logs through netlink to auditbeat, but they stucked, and then become to D state.
+
 ```
     [<0>] audit_receive+0x28/0xc0
     [<0>] netlink_unicast+0x197/0x220
@@ -28,6 +30,7 @@ User can't run sudo in their container
 ```
 
 From the disassembly code of function audit_receive(), we can see that it stuck at try to acquire a lock in audit_receive()
+
 ![](/assets/2021-06-03-auditbeat-deadlock-audit-receive.png)
 
 * Try to find out which process is holding this lock, and we can see that it is hold by auditbeat.
@@ -68,6 +71,7 @@ From the disassemble code, we can see that the process become sleep and schedule
 ![](/assets/2021-06-03-auditbeat-deadlock-netlink-attachskb.png)
 
 The reason is sk->sk_rmem_alloc > sk->sk_rcvbuf, because we can see that the rmem of auditbeat is full by 'ss -f netlink -e|grep -i auditbeat'
+
 
 ```
     214272 0           audit:auditbeat/247832       *       sk=0 cb=0 groups=0x00000000
