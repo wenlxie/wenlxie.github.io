@@ -1,6 +1,6 @@
 ---
 layout: post
-tags: cpu usage, 
+tags: cpu, performance, linux 
 title: cpu sys usage high
 categories: Linux
 date: 2022-08-29 10:50:32-0700
