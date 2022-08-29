@@ -452,7 +452,6 @@ crash> set 38029
    b_last_holder = 38030
 
  It is waiting for a lock, which is holding  by 38030
-
 ```
 
 * Check for process 38030
@@ -467,7 +466,6 @@ crash> set 38029
 
  crash> struct xfs_buf.b_last_holder ffff908f92a0a680
    b_last_holder = 38029
-
 ```
 
 ## Check for where to get the lock
@@ -535,7 +533,6 @@ Lock ffff908f92a0a680 should be held by 38029 in xfs_iunlink_remove() but not re
    b'__x64_sys_rename+0x29'
    b'do_syscall_64+0x84'
    b'entry_SYSCALL_64_after_hwframe+0x49'
-
 ```
 
 There is ABBA deadlock in this scenario.
