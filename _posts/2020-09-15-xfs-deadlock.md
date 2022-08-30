@@ -1,6 +1,6 @@
 ---
 layout: post
-tags: xfs deadlock linux
+tags: overlayfs xfs deadlock linux
 title: overlayfs over xfs deadlock
 categories: Linux
 date: 2020-09-15 14:02:32-0700
