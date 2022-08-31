@@ -1,6 +1,6 @@
 ---
 layout: post
-tags: container disk linux volume
+tags: disk linux volume
 title: Disk usage high in container
 categories: Linux
 date: 2020-04-15 14:02:32-0700
