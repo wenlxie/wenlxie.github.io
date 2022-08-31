@@ -1,8 +1,8 @@
 ---
 layout: post
-tags: storage disk
+tags: storage disk linux container volume
 title: Disk usage high in container
-categories: Linux container
+categories: Linux
 date: 2020-04-15 14:02:32-0700
 excerpt: disk usage high in container
 ---
