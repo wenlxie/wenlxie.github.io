@@ -11,21 +11,22 @@ excerpt: disk usage high in container
 User reported that there disk had been used up.
 
 ```
-2020.04.15 17:34:04:920 [main] ERROR c.e.f.i.s.n.h.HBaseNRTBuilder.buildUsecase:140 - Failed to build NRT index for usecase item_active
+2020.03.15 17:34:04:920 [main] ERROR c.e.f.i.s.n.h.HBaseNRTBuilder.buildUsecase:140 - Failed to build NRT index for usecase item_active
 java.io.IOException: Disk quota exceeded
 	at java.io.UnixFileSystem.createFileExclusively(Native Method)
 	at java.io.File.createTempFile(File.java:2026)
 
 ```
 
-But he checked the volume by du and find it is only 148M files
+But he checked the volume by du and find there is only 148M files
 ```
 root@active-stream-1-7755cff88-vhrww:/opt$ du -sh docker/
 148M	docker/
 ```
 ## Check for what happend
-We limit the emptydir with xfs_quota feature, so that user can only use 2Gi of emptyDir, 
-so if run `df` , then it will show the disk usage is 100%
+
+We limit the pod's emptydir with xfs_quota feature, user can only use 2Gi of emptyDir, 
+If run `df` , it will show that volume's disk usage is 100%
 
 ```
 Filesystem                Size      Used Available Use% Mounted on
@@ -34,10 +35,10 @@ Filesystem                Size      Used Available Use% Mounted on
 
 ## root cause
 
-As we know, if the files that process open() but not close() after the file delete, then we can see
-du and df can have this kind of behavior.
+As we know, if the files that process use open() to open it but not call close() to close the fd after the file delete, 
+then du and df commands have this kind of behavior.
 
-So we can use following commands to check for this:
+So following commands can be used to check for this:
 * `lsof|grep deleted`
 * `ls -lah /proc/[1-9]*/fd|grep delete` and `cat /proc/[1-9]* /maps|grep delete`
 

@@ -3,7 +3,7 @@ layout: post
 tags: traceroute
 title: traceroute to debug network issue
 categories: Network
-date: 2022-03-02 14:02:32-0700
+date: 2020-03-02 14:02:32-0700
 excerpt: traceroute
 ---
 
