@@ -23,10 +23,11 @@ There is a bpf helper function for pid mapping.
 Context info:
 
 https://man7.org/linux/man-pages/man7/bpf-helpers.7.html
+
 https://github.com/iovisor/bcc/blob/master/docs/reference_guide.md#12-bpf_get_ns_current_pid_tgid
 
-Patch: 
 https://lore.kernel.org/bpf/20191017150032.14359-3-cneirabustos@gmail.com/
+
 https://lwn.net/Articles/807741/
 
 The API is:
