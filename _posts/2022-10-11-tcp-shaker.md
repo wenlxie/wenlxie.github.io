@@ -9,11 +9,19 @@ excerpt: tcp-shaker
 
 ## Issues
 
+<<<<<<< HEAD
 Recently we met an issue that related with tcp healthy check. 
 Our software load balancer need to do health check with backend VIP (DSR mode, so need to check for the VIP) periodically via TCP.
 Since it needs to specific the source IP for the connection, so it will do bind() operation, but sometimes it met the error of "bind: address already in use"
 . 
 This is caused by the ip source port exhausted, lots of health check connections are in TIME_WAIT status and not release the source port.  
+=======
+Recently we met an issue that related with tcp healthy check.
+Our software load balancer need to do health check with backend VIP (DSR mode, so need to check for the VIP) periodically via TCP.
+Since it needs to specific the source IP for the connection, so it will do bind() operation, but sometimes it met the error of "bind: address already in use"
+.
+This is caused by the ip source port exhausted, lots of health check connections are in TIME_WAIT status and not release the source port.
+>>>>>>> 8977dff (Add kretprobe)
 
 ## tcp-shaker
 
@@ -26,7 +34,7 @@ Another solution is use [tcp-shaker](https://github.com/tevino/tcp-shaker)
 
 ## Implementation of tcp-shaker
 
-* Readme 
+* Readme
 
 ```
 In most cases when you establish a TCP connection(e.g. via net.Dial), these are the first three packets between the client and server(TCP three-way handshake):
@@ -54,23 +62,24 @@ that renders the last ACK unnecessary or even harmful in some cases.
 
   https://github.com/tevino/tcp-shaker/blob/master/socket_linux.go#L53
 
-Disable the QuickAck makes the last ack in tcp handshake to be hold and not sent immediately. 
-The max hold time is 200ms ( HZ/5 in code) in Linux 
+Disable the QuickAck makes the last ack in tcp handshake to be hold and not sent immediately.
+The max hold time is 200ms ( HZ/5 in code) in Linux
 
 SO_LINGER with timeout=0 makes the close() (https://github.com/tevino/tcp-shaker/blob/master/checker_linux.go#L154)
-sent out RST to finish the connection instead of FIN. 
+sent out RST to finish the connection instead of FIN.
+
 Ref: https://stackoverflow.com/questions/3757289/when-is-tcp-option-so-linger-0-required
 
 This is a smart solution for handshake.
 
 - In client side, the socket can be closed quickly, no need kept in TIME_WAIT status, so source port can be released quickly
 
-- In server side, the socket is not in ESTABLISHED status since tcp handshake not finished, so it will not impact the application, which is calling accept(). 
+- In server side, the socket is not in ESTABLISHED status since tcp handshake not finished, so it will not impact the application, which is calling accept().
 
 - If the RST not received by server, server's socket will retry to sent out synack to client, then what will client do?
   From the source code, there will be no socket find for this request, so client will send a RST to server again.
 
-- In client, the source port can be reused, so it may use this source port and sent syn request to server, but if server is still in TCP_SYN_RECV status because of RST lost, then what will happen for this request? 
+- In client, the source port can be reused, so it may use this source port and sent syn request to server, but if server is still in TCP_SYN_RECV status because of RST lost, then what will happen for this request?
   From the tcpdump, there will be an ack packet from server, and then client will do reset.
 
 ```
