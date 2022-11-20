@@ -3,7 +3,7 @@ layout: post
 tags: kretprobe kprobe eBPF ftrace
 title: kretprobe poor performance
 categories: Linux
-date: 2020-11-18 14:02:32-0700
+date: 2022-11-18 14:02:32-0700
 excerpt: kretprobe poor performance
 ---
 
