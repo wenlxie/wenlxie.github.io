@@ -9,8 +9,9 @@ excerpt: cilium hubble implementation
 
 
 ## Hubble event generate
-
+  
 ### DataPlane
+  
   Call the API: send_drop_notify_error(), send_trace*(), send_drop_notify(), cilium_dbg*() to send events perf_buff cilium_event.
   Cilium_event is a perf_buff, which is is 64 pages.
   Difference between perf buff vs ring buff : https://nakryiko.com/posts/bpf-ringbuf/
@@ -49,6 +50,7 @@ send_trace_notify(struct __ctx_buff *ctx, enum trace_point obs_point,
 ```
 
 ### ControlPlane
+  
   Cilium agent calls api daemon.SendNotification when endpoint add/del and policy add/del.
 
 ```
@@ -61,9 +63,8 @@ func (d *Daemon) SendNotification(notification monitorAPI.AgentNotifyMessage) er
 }
 ```
 
-
 ## hubble agent
-
+  
 hubble agent register listener and consumer of the events, and the start a go routine to handle the events 
 It only handles the events from data plane, 
 Control plane events will be sent to listeners and consumers directly.
@@ -93,11 +94,12 @@ These events include lost events and normal events. Agent sent the events to the
 
 In this step, events are still in raw data format. 
 
+
 ## hubble consumer
-
+  
 ### hubble observer
-
-  This consumer only enabled when hubble enabled. 
+  
+This consumer only enabled when hubble enabled. 
 
 ```
 func (d *Daemon) launchHubble() {
@@ -116,8 +118,8 @@ func (d *Daemon) launchHubble() {
 ```
 
 ### hubble recorder 
-
-  This consumer is enabled by config option.Config.EnableRecorder && option.Config.EnableHubbleRecorderAPI 
+  
+This consumer is enabled by config option.Config.EnableRecorder && option.Config.EnableHubbleRecorderAPI 
 
 ```
 func (d *Daemon) launchHubble() {
@@ -142,7 +144,7 @@ func (d *Daemon) launchHubble() {
 ```
 
 ## hubble listener 
-
+  
 ```
 	// We can only attach the monitor agent once cilium_event has been set up.
 	if option.Config.RunMonitorAgent {
@@ -214,9 +216,9 @@ func (s *server) connectionHandler1_2(ctx context.Context) {
 ```
 
 ## events handling by consumer
-
+  
 ### hubble observer 
-
+  
 - start a go routine the handle the events
 
     ```
@@ -240,25 +242,25 @@ func (s *server) connectionHandler1_2(ctx context.Context) {
   
 - Decode the events
 
-    - perf event
+    -  perf event
     
-    - dbg events 
+    -  dbg events 
       
       Add endpoint info by ip 
       
-    - l34 events
+    -  l34 events
        
       Add L3, L4 metadata to the events. Medata includes but not limited: Endpoint info, pod info, 5 tuples ... 
     
-    - agent event
+    -  agent event
     
       - Handle the message from L7, then decode the L7 event and add metadata
       
       - Handle the message from the monitor agent
       
-    - lost event
+    -  lost event
     
-    - decode flows to add metrics.
+    -  decode flows to add metrics.
   
       ```
 
@@ -279,7 +281,7 @@ func (s *server) connectionHandler1_2(ctx context.Context) {
       ```
 
 
-- Call onDecodeEvent()  to execute the hook after event decoded
+-  Call onDecodeEvent()  to execute the hook after event decoded
 
       ```
           for _, f := range s.opts.OnDecodedEvent {
@@ -294,8 +296,8 @@ func (s *server) connectionHandler1_2(ctx context.Context) {
       ```
 
 ### hubble recorder
-
-- Get the request from the client, and the start to record
+  
+-  Get the request from the client, and the start to record
   
       ```
             startRecording := req.GetStart()
@@ -310,8 +312,8 @@ func (s *server) connectionHandler1_2(ctx context.Context) {
                 return err
             }
       ```
-  
-- Create the pcap file, get the events from queue and then send response
+
+-  Create the pcap file, get the events from queue and then send response
 
         ```
         func (s *Service) startRecording(
@@ -379,7 +381,7 @@ func (s *server) connectionHandler1_2(ctx context.Context) {
         ```
 
 ## events handling by listener
-
+  
 - ServeMonitorAPI() accept the monitor request, and create a listener for the request
 
 ```
@@ -477,15 +479,15 @@ func (ml *listenerv1_2) drainQueue() {
 ```
 
 ## hubble observer vs cilium monitor
-
+  
 hubble observer has the metadata like endpoint related infos. 
 
 ## client
-
+  
 - hubble observe client sends the requests to hubble observer grpc server in the cilium agent. Filter will be applied in grpc server side
 
 - cilium monitor get the events fro the agent listener, then it will add the filed name to the events in client side. 
 
 ## Hubble functions
-
+  
 ![](/assets/2022-11-26-cilium-hubble.png)
