@@ -9,19 +9,12 @@ excerpt: tcp-shaker
 
 ## Issues
 
-<<<<<<< HEAD
 Recently we met an issue that related with tcp healthy check. 
 Our software load balancer need to do health check with backend VIP (DSR mode, so need to check for the VIP) periodically via TCP.
 Since it needs to specific the source IP for the connection, so it will do bind() operation, but sometimes it met the error of "bind: address already in use"
 . 
 This is caused by the ip source port exhausted, lots of health check connections are in TIME_WAIT status and not release the source port.  
-=======
-Recently we met an issue that related with tcp healthy check.
-Our software load balancer need to do health check with backend VIP (DSR mode, so need to check for the VIP) periodically via TCP.
-Since it needs to specific the source IP for the connection, so it will do bind() operation, but sometimes it met the error of "bind: address already in use"
-.
-This is caused by the ip source port exhausted, lots of health check connections are in TIME_WAIT status and not release the source port.
->>>>>>> 8977dff (Add kretprobe)
+
 
 ## tcp-shaker
 
