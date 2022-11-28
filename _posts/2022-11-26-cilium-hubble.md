@@ -10,7 +10,7 @@ excerpt: cilium hubble implementation
 
 ## Hubble event generate
 
-- DataPlane
+### DataPlane
   Call the API: send_drop_notify_error(), send_trace*(), send_drop_notify(), cilium_dbg*() to send events perf_buff cilium_event.
   Cilium_event is a perf_buff, which is is 64 pages.
   Difference between perf buff vs ring buff : https://nakryiko.com/posts/bpf-ringbuf/
@@ -48,7 +48,7 @@ send_trace_notify(struct __ctx_buff *ctx, enum trace_point obs_point,
 }
 ```
 
-- ControlPlane
+### ControlPlane
   Cilium agent calls api daemon.SendNotification when endpoint add/del and policy add/del.
 
 ```
@@ -95,7 +95,7 @@ In this step, events are still in raw data format.
 
 ## hubble consumer
 
-- hubble observer
+### hubble observer
 
   This consumer only enabled when hubble enabled. 
 
@@ -115,7 +115,7 @@ func (d *Daemon) launchHubble() {
 }
 ```
 
-- hubble recorder 
+### hubble recorder 
 
   This consumer is enabled by config option.Config.EnableRecorder && option.Config.EnableHubbleRecorderAPI 
 
@@ -215,16 +215,16 @@ func (s *server) connectionHandler1_2(ctx context.Context) {
 
 ## events handling by consumer
 
-- hubble observer 
+### hubble observer 
 
-  - start a go routine the handle the events
+- start a go routine the handle the events
 
     ```
     go d.hubbleObserver.Start()
     ```
 
-  - Get the events from channel , events are sent from hubble agent
-  - Call OnMonitorEvent to run the hook before decode the events. For this consumer, actually there is nothing to handle here. 
+- Get the events from channel , events are sent from hubble agent
+- Call OnMonitorEvent to run the hook before decode the events. For this consumer, actually there is nothing to handle here. 
 
     ```
           for _, f := range s.opts.OnMonitorEvent {
@@ -238,7 +238,8 @@ func (s *server) connectionHandler1_2(ctx context.Context) {
           }
     ```
   
-  - Decode the events
+- Decode the events
+
     - perf event
     
     - dbg events 
@@ -252,128 +253,130 @@ func (s *server) connectionHandler1_2(ctx context.Context) {
     - agent event
     
       - Handle the message from L7, then decode the L7 event and add metadata
+      
       - Handle the message from the monitor agent
       
     - lost event
     
-  - decode flows to add metrics.
+    - decode flows to add metrics.
   
-    ```
+      ```
 
-        if flow, ok := ev.Event.(*flowpb.Flow); ok {
-            for _, f := range s.opts.OnDecodedFlow {
-                stop, err := f.OnDecodedFlow(ctx, flow)
-                if err != nil {
-                    s.log.WithError(err).WithField("event", monitorEvent).Info("failed in OnDecodedFlow")
-                }
-                if stop {
-                    continue nextEvent
-                }
+          if flow, ok := ev.Event.(*flowpb.Flow); ok {
+              for _, f := range s.opts.OnDecodedFlow {
+                  stop, err := f.OnDecodedFlow(ctx, flow)
+                  if err != nil {
+                      s.log.WithError(err).WithField("event", monitorEvent).Info("failed in OnDecodedFlow")
+                  }
+                  if stop {
+                      continue nextEvent
+                  }
+              }
+
+              atomic.AddUint64(&s.numObservedFlows, 1)
+          }
+
+      ```
+
+
+- Call onDecodeEvent()  to execute the hook after event decoded
+
+      ```
+          for _, f := range s.opts.OnDecodedEvent {
+              stop, err := f.OnDecodedEvent(ctx, ev)
+              if err != nil {
+                  s.log.WithError(err).WithField("event", ev).Info("failed in OnDecodedEvent")
+              }
+              if stop {
+                  continue nextEvent
+              }
+          }
+      ```
+
+### hubble recorder
+
+- Get the request from the client, and the start to record
+  
+      ```
+            startRecording := req.GetStart()
+            if startRecording == nil {
+                return fmt.Errorf("received invalid request %q, expected start request", req)
             }
 
-            atomic.AddUint64(&s.numObservedFlows, 1)
-        }
-
-    ```
-
-  - Call onDecodeEvent()  to execute the hook after event decoded
-
-    ```
-        for _, f := range s.opts.OnDecodedEvent {
-            stop, err := f.OnDecodedEvent(ctx, ev)
+            // The startRecording helper spawns a clean up go routine to remove all
+            // state associated with this recording when the context ctx is cancelled.
+            recording, filePath, err = s.startRecording(ctx, startRecording)
             if err != nil {
-                s.log.WithError(err).WithField("event", ev).Info("failed in OnDecodedEvent")
+                return err
             }
-            if stop {
-                continue nextEvent
-            }
-        }
-    ```
-
-- hubble recorder
-
-  - Get the request from the client, and the start to record
+      ```
   
-  ```
-        startRecording := req.GetStart()
-        if startRecording == nil {
-            return fmt.Errorf("received invalid request %q, expected start request", req)
-        }
+- Create the pcap file, get the events from queue and then send response
 
-        // The startRecording helper spawns a clean up go routine to remove all
-        // state associated with this recording when the context ctx is cancelled.
-        recording, filePath, err = s.startRecording(ctx, startRecording)
+        ```
+        func (s *Service) startRecording(
+        ctx context.Context,
+        req *recorderpb.StartRecording,
+        ) (handle *sink.Handle, filePath string, err error) {
+        ---
+        filters, err := parseFilters(req.GetInclude())
         if err != nil {
-            return err
+            return nil, "", err
         }
-  ```
-  
-  - Create the pcap file, get the events from queue and then send response
-
-    ```
-    func (s *Service) startRecording(
-	ctx context.Context,
-	req *recorderpb.StartRecording,
-    ) (handle *sink.Handle, filePath string, err error) {
-    ---
-    filters, err := parseFilters(req.GetInclude())
-	if err != nil {
-		return nil, "", err
-	}
-    ---
-    var f *os.File
-	f, filePath, err = createPcapFile(s.opts.StoragePath, prefix)
-	if err != nil {
-		return nil, "", err
-	}
-    ---
-    handle, err = s.dispatch.StartSink(ctx, config)
-	if err != nil {
-		return nil, "", err
-	}
-    ---
-    }
+        ---
+        var f *os.File
+        f, filePath, err = createPcapFile(s.opts.StoragePath, prefix)
+        if err != nil {
+            return nil, "", err
+        }
+        ---
+        handle, err = s.dispatch.StartSink(ctx, config)
+        if err != nil {
+            return nil, "", err
+        }
+        ---
+        }
 	
-    ```
+        ```
     
-    ``` 
-    func startSink(ctx context.Context, p PcapSink, queueSize int) *sink {
-    ---
-	for {
-    select {
-    // s.queue will be closed when the sink is unregistered
-    case rec := <-s.queue:
-    pcapRecord := pcap.Record{
-    Timestamp:      rec.timestamp,
-    CaptureLength:  rec.inclLen,
-    OriginalLength: rec.origLen,
-    }
+        ``` 
+        func startSink(ctx context.Context, p PcapSink, queueSize int) *sink {
+        ---
+        for {
+        select {
+        // s.queue will be closed when the sink is unregistered
+        case rec := <-s.queue:
+        pcapRecord := pcap.Record{
+        Timestamp:      rec.timestamp,
+        CaptureLength:  rec.inclLen,
+        OriginalLength: rec.origLen,
+        }
 
-    if err = p.Writer.WriteRecord(pcapRecord, rec.data); err != nil {
-					return
-				}
+        if err = p.Writer.WriteRecord(pcapRecord, rec.data); err != nil {
+                        return
+                    }
 
-				stats := s.addToStatistics(Statistics{
-					PacketsWritten: 1,
-					BytesWritten:   uint64(rec.inclLen),
-				})
-				if (stop.PacketsCaptured > 0 && stats.PacketsWritten >= stop.PacketsCaptured) ||
-					(stop.BytesCaptured > 0 && stats.BytesWritten >= stop.BytesCaptured) {
-					return
-				}
-			case <-s.shutdown:
-				return
-			case <-stopAfter:
-				// duration of stop condition has been reached
-				return
-			case <-ctx.Done():
-				err = ctx.Err()
-				return
-			}
-		}
-    ---
-    }
-    ```
+                    stats := s.addToStatistics(Statistics{
+                        PacketsWritten: 1,
+                        BytesWritten:   uint64(rec.inclLen),
+                    })
+                    if (stop.PacketsCaptured > 0 && stats.PacketsWritten >= stop.PacketsCaptured) ||
+                        (stop.BytesCaptured > 0 && stats.BytesWritten >= stop.BytesCaptured) {
+                        return
+                    }
+                case <-s.shutdown:
+                    return
+                case <-stopAfter:
+                    // duration of stop condition has been reached
+                    return
+                case <-ctx.Done():
+                    err = ctx.Err()
+                    return
+                }
+            }
+        ---
+        }
+        ```
 
 ## events handling by listener
 
@@ -480,6 +483,7 @@ hubble observer has the metadata like endpoint related infos.
 ## client
 
 - hubble observe client sends the requests to hubble observer grpc server in the cilium agent. Filter will be applied in grpc server side
+
 - cilium monitor get the events fro the agent listener, then it will add the filed name to the events in client side. 
 
 ## Hubble functions
