@@ -10,8 +10,7 @@ excerpt: IPVS IPIP ICMP LINUX
 
 ## Backgroud
 
-In our network environment, we use IPVS as a load balancer to provide virtual services and the IPIP protocol to preserve client IPs. The traffic flow is as follows:
-
+In our network environment, we use IPVS as a load balancer to provide virtual services, and we use the IPIP protocol to preserve client IPs. The traffic flow is as follows:
 
 ![](/assets/2024-12-31-IPVS-IPIP-FLOW.png)
 
@@ -19,17 +18,16 @@ In our network environment, we use IPVS as a load balancer to provide virtual se
 
 The client pod has envoy sidecar injected. 
 
-Recently we have some customers that reported  their request has a high timeout rate after they move to this network flow.
+Recently, some customers have reported that their requests have a high timeout rate after moving to this network flow.
 
 
-- The client create a new request to VIP 10.0.0.2:443 with client IP 10.0.0.1 and port 12345 (Use  12345 as an example)
-  The connection is 10.0.0.1:12345 → 10.0.0.2:443
+1. The client creates a new connection to the VIP 10.0.0.2:443 with the client IP 10.0.0.1 and port 12345 (using 12345 as an example). The connection is 10.0.0.1:12345 → 10.0.0.2:443.
 
-- Iptables rules intercept the request and redirect the traffic to port 15001, changing the connection's destination IP and port to 127.0.0.1 and 15006. The connection now is 10.0.0.1:12345 → 127.0.0.1:15001.
+2. Iptables rules intercept the request and redirect the traffic to port 15001, changing the connection's destination IP and port to 127.0.0.1 and 15006. The connection is now 10.0.0.1:12345 → 127.0.0.1:15006.
 
-- The client sidecar Envoy receives the request from the lo interface. Since outbound traffic is passthrough, Envoy does not perform any checks at the HTTP/HTTPS layer and creates a new connection to destination 10.0.0.2. The request is forwarded to VIP 10.0.0.2 with the connection 10.0.0.1:54321 → 10.0.0.2:443.
+3. After the TCP handshake succeeds, the client sends an SSL hello on the established connection. The sidecar's Envoy receives the request from the loopback (lo) interface. Since the outbound traffic is passthrough, Envoy does not perform any checks at the HTTP/HTTPS layer and creates a new connection to the destination 10.0.0.2. The request is forwarded to the VIP 10.0.0.2 with the connection 10.0.0.1:54321 → 10.0.0.2:443.
 
-- The load balancer uses IPVS with the IPIP packet forwarding method and has the following IPVS rule:
+4. The load balancer uses IPVS with the IPIP packet forwarding method and has the following IPVS rule:
 
 ```
 ipvsadm -Ln -t 10.0.0.2:443
@@ -41,50 +39,49 @@ TCP  10.0.0.2:443 mh
   -> 10.0.0.8:443                 Tunnel    1      0          0
 ```
 
-- The request is forwarded to a real server with an IPIP tunnel header, where the outer IP header has source IP 10.0.0.5 (load balancer's IP) and destination IP 10.0.0.6 (real server's IP), while the inner IP/TCP header remains unchanged.
+5. The TCP SYN packet from 10.0.0.1:54321 to 10.0.0.2:443 is forwarded to a real server with an IPIP tunnel header, where the outer IP header has the source IP 10.0.0.5 (load balancer's IP) and the destination IP 10.0.0.6 (real server's IP), while the inner IP/TCP header remains unchanged..
 
 
-- After receiving the request, the real server strips the outer IP header, processes the request, and sends a response directly to the client, bypassing the load balancer.
+6. After receiving the TCP SYN packet from 10.0.0.1:54321 to 10.0.0.2:443, the real server strips the outer IP header, processes the request, and sends TCP SYN,ACK directly to the client, bypassing the load balancer
 
 The sidecar(envoy) in the client side and Loadbalancer only handles the request in the TCP layer, so the TLS and HTTP interaction happens between the client and server directly. 
 
 
 ## Tcpdump Analysis
 
-After TCPDUMP for the request to check for why the request was delayed. 
-Here is the dump result:
+We used TCPDUMP to check why the request was delayed, here is the dump result:
 
 ![](/assets/2024-12-31-TCPDUMP-request-B.png)
 
 
-This is the tcpdump file captured from lo and eth0 interface in the client side.
+This is the tcpdump file captured from the 'lo' and 'eth0' interfaces on the client side..
 
--  No 257571 to 257797 packets are the TCP and TLS handshake packets.
--  The No 257858 packet is the packet sent from the client and received in the lo interface.
--  Instead of forwarding this packet to 10.0.0.2 directly,  there are 4 ICMP packets with the source IP 10.0.0.1 and destination IP 10.0.0.1 captured.
+-  Packets numbered 257571 to 257797 are TCP and TLS handshake packets.
+-  Packet number 257858 is sent from the client and received on the 'lo' interface.
+-  Instead of forwarding this packet directly to 10.0.0.2, there are four ICMP packets with the source IP 10.0.0.1 and destination IP 10.0.0.1 that were captured..
    The details of this ICMP packet:
 
   ![](/assets/2024-12-31-ICMP-type3-code4.png) 
 
--  The No 259044 packet is the first packet sent from 10.0.0.1 to 10.0.0.2. The timestamp is 09:05:53.638466, which is about 207.76 ms delay compared with  09:05:53.430710  (No 257858 packet)
+-  Packet number 259044 is the first packet sent from 10.0.0.1 to 10.0.0.2. The timestamp is 09:05:53.638466, indicating a delay of approximately 207.76 ms compared to the timestamp 09:05:53.430710 of packet number 257858.
 
-But the weird thing is, there was another request almost at the same time, but have different behavior 
+But the strange thing is, there was another request almost at the same time, but it exhibited different behavior. 
 
 ![](/assets/2024-12-31-TCPDUMP-request-A.png)
 
 
--  No 257563 to 257776 packets are the TCP and TLS handshake packets
--  The No 257809 packet is the packet sent from the client and received in the lo interface. 
--  Then No 257812 packet is the packet that passthrough the No 257809 packet to 10.0.0.2 
--  Then a destination unreachable ICMP packet received with source IP 10.0.0.2 to client 10.0.0.1 (No 257815 Packet)
--  No 257819 Packet is the retransmission packet of No 257812 with only 09:05:53.430290 - 09:05:53.430181 = 0.1 ms
+-  Packets numbered 257563 to 257776 are the TCP and TLS handshake packets.
+-  Packet number 257809 is the packet sent from the client and received on the loopback (lo) interface. 
+-  Then, packet number 257812 is the packet that forwards the contents of packet number 257809 to 10.0.0.2.
+-  Then, a destination unreachable ICMP packet was received from source IP 10.0.0.2 to client 10.0.0.1 (packet number 257815).
+-  Packet number 257819 is the retransmission of packet number 257812, with only a 0.1 ms time difference between 09:05:53.430290 and 09:05:53.430181.
 
-This request (request A in the following content) is a bit earlier  than the previous request (request B in the following content) which has issues. So it looks like the No 257815 Packet triggered something in the TCP stack and finally  made the 200ms delay.
+This request (referred to as request A below) occurred slightly earlier than the previous request (referred to as request B below), which encountered issues. It seems that packet number 257815 triggered something in the TCP stack, ultimately causing a 200 ms delay.
 
 
 ## ICMP destination unreachable packet
 
-This error message occurs when the size of a packet is larger than the MTU of the interface that needs to route it.  Since IPVS will add an extra IP header (IPIP tunnel), it will add 20 bytes to the original packet, which will change the packet length, and then if the packet is marked with DF (don’t frag), then it will send the ICMP destination unreachable packet to the client. 
+This error message occurs when the size of a packet exceeds the Maximum Transmission Unit (MTU) of the interface that needs to route it. Since IP Virtual Server (IPVS) adds an extra IP header for IPIP tunneling, it increases the packet size by 20 bytes. This change in packet length can lead to issues if the packet is marked with the 'Don't Fragment' (DF) flag. In such cases, IPVS  will send an ICMP Destination Unreachable message back to the client.. 
 
 
 https://elixir.bootlin.com/linux/v5.15.126/source/net/netfilter/ipvs/ip_vs_xmit.c#L239-L249
@@ -134,24 +131,28 @@ static inline bool ensure_mtu_is_adequate(struct netns_ipvs *ipvs, int skb_af,
 
 ```
 
-From the details of this ICMP packet, it also contains the MTU information, which is 1480.
+The details of this ICMP packet also include the MTU information, which is 1480..
 
  ![](/assets/2024-12-31-ICMP-type3-code4.png)
 
-The MTU setting is 1500 in any of the hop the whole traffic flow.  IPIP tunnels need to have another IP header injected, which is 20 bytes, that is why IPVS ask the client to send packets based on MTU 1480. 
+The MTU setting is 1500 at each hop in the entire traffic flow. However, IPIP tunnels require the injection of an additional IP header, which is 20 bytes. This is why IPVS requests the client to send packets with an MTU of 1480. 
 
-So if we change the interface’s MTU or route MTU to be 1480 in the client or server side, then this issue can be resolved. But there are still something that  not resolved:
-
+If we change the MTU of the interface or the route to 1480 on either the client or server side, this issue can be resolved. But there are still something not clear:
 
 
 ## Question 1: How does the ICMP destination unreachable packet impact the client behavior?
 
-Let is check for the source code for how to handle the ICMP destination unreachable packet (FRAG NEEDED)  packets  in Linux
+Let's examine the source code to understand how Linux handles ICMP Destination Unreachable (FRAG NEEDED) packets.
 
-https://elixir.bootlin.com/linux/v5.15.126/source/net/ipv4/tcp_ipv4.c#L545-L561
+You can find the relevant code here:
 
-After receive the ICMP unreachable packet,  https://elixir.bootlin.com/linux/v5.15.126/source/net/ipv4/icmp.c#L858 
-Then it will start to change MTU by icmp_socket_deliver() →tcp_v4_err()
+[tcp-shaker](https://github.com/tevino/tcp-shaker)
+
+[tcp_ipv4.c](https://elixir.bootlin.com/linux/v5.15.126/source/net/ipv4/tcp_ipv4.c#L545-L561)
+[icmp.c](https://elixir.bootlin.com/linux/v5.15.126/source/net/ipv4/icmp.c#L858 )
+
+Upon receiving an ICMP Unreachable packet, the system begins to adjust the MTU through the icmp_socket_deliver() function, which calls tcp_v4_err().
+
 
 ```
 	if (code == ICMP_FRAG_NEEDED) { /* PMTU discovery (RFC1191) */
@@ -189,10 +190,13 @@ Then it will start to change MTU by icmp_socket_deliver() →tcp_v4_err()
 		}
 ```
 
-If the sock is not held by user, then it will reduce the MTU directly by tcp_v4_mtu_reduced()
-But if the the tcp socket is held by user, then it will set TCP small queue flags TCP_MTU_REDUCED_DEFERRED, after socket released by userspace, tcp_release_cb() will be called to handle for the tsq, and tcp_v4_mtu_reduced() will be called. 
+If the socket is not held by user, the MTU is reduced immediately using tcp_v4_mtu_reduced(). However, if the TCP socket is held by  user, the TCP small queue flag TCP_MTU_REDUCED_DEFERRED will be set. Once the socket is released by user, tcp_release_cb() is called to process the queue, and tcp_v4_mtu_reduced() is invoked.
 
-https://elixir.bootlin.com/linux/v5.15.126/source/net/ipv4/tcp_output.c#L1112-L1115
+You can find more details here:
+
+[tcp_output.c](https://elixir.bootlin.com/linux/v5.15.126/source/net/ipv4/tcp_output.c#L1112-L1115)
+
+
 So after the ICMP packet has been handled, the route MTU will be changed to 1480 and linux kernel will keep this MTU cache for 600s.
 
 
@@ -210,12 +214,11 @@ net.ipv6.route.mtu_expires = 600
 
 
 
-## Question 2:   Why there are multiple ICMP destination unreachable packet (FRAG NEEDED)  packets with the source IP = destination IP
+## Question 2:   Why are there multiple ICMP Destination Unreachable (FRAG NEEDED) packets with the source IP equal to the destination IP?
 
 
 
-Let’s trace the kernel stack of function icmp_send((skb, ICMP_DEST_UNREACH, ICMP_FRAG_NEEDED, htonl(mtu)) 
-icmp_send() is the function in the Linux kernel that sends this ICMP packet, by tracing it, we can see how this  is  triggered?
+Let's trace the kernel stack of the function icmp_send(skb, ICMP_DEST_UNREACH, ICMP_FRAG_NEEDED, htonl(mtu)). The icmp_send() function in the Linux kernel is responsible for sending this ICMP packet. By tracing it, we can understand how this is triggered:
 
 
 ```
@@ -245,12 +248,11 @@ icmp_send() is the function in the Linux kernel that sends this ICMP packet, by 
 
 ```
 
-From the call stack, we can see that It checks the route MTU and tries to IP fragment, if DF bit is set in the IP header, then kernel will send the ICMP packet with type: 3 (ICMP_DEST_UNREACH) and code: 4 (ICMP_FRAG_NEEDED).
+From the call stack, we can see that it checks the route MTU and attempts to perform IP fragmentation. If the DF (Don't Fragment) bit is set in the IP header, the kernel will send an ICMP packet with type 3 (ICMP_DEST_UNREACH) and code 4 (ICMP_FRAG_NEEDED).
 
-There were two requests almost at the same time. The first request will trigger the ICMP destination unreachable packet from the load balancer, and then it will change the route MTU to be 1480. Then the second request, which do the MSS negotiation based on MTU 1500 and but  route MTU had been changed to 1480 on the fly,  so when the packet length > 1500, then ICMP packet with type: 3 (ICMP_DEST_UNREACH) and code: 4 (ICMP_FRAG_NEEDED)  will be sent in kernel with the source IP == destination IP.
+There were two requests occurring almost simultaneously. The first request triggers the ICMP Destination Unreachable packet from the load balancer, which then changes the route MTU to 1480. The second request performs MSS (Maximum Segment Size) negotiation based on an MTU of 1500, but the route MTU has already been changed to 1480. Thus, when the packet length exceeds 1500, an ICMP packet with type 3 (ICMP_DEST_UNREACH) and code 4 (ICMP_FRAG_NEEDED) is sent from the kernel with the source IP equal to the destination IP.
 
-If we check for the statistics in linux kernel by netstat,  we can see that there are some statistics for this.
-
+If we examine the statistics in the Linux kernel using netstat, we can see some relevant data:
 ```
 Icmp:
     6957 ICMP messages received
@@ -265,8 +267,7 @@ Icmp:
         time exceeded: 3536
 ```
 
-The destination unreachable: 6940 in ICMP input histogram is for the statistics when receiving the ICMP type: 3 (ICMP_DEST_UNREACH) and code: 4 (ICMP_FRAG_NEEDED), basically for the case like request A.  
-The destination unreachable: 65 in ICMP output histogram is for the statistics when sending  the ICMP type: 3 (ICMP_DEST_UNREACH) and code: 4 (ICMP_FRAG_NEEDED), basically for the case like request A.  
+The "destination unreachable: 6940" in the ICMP input histogram represents the statistics for receiving ICMP type 3 (ICMP_DEST_UNREACH) and code 4 (ICMP_FRAG_NEEDED), typically for cases like request A. The "destination unreachable: 65" in the ICMP output histogram represents the statistics for sending ICMP type 3 (ICMP_DEST_UNREACH) and code 4 (ICMP_FRAG_NEEDED), also typically for cases like request B.
 
 
 
