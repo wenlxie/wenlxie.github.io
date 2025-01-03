@@ -29,17 +29,8 @@ Recently, some customers have reported that their requests have a high timeout r
 
 4. The load balancer uses IPVS with the IPIP packet forwarding method and has the following IPVS rule:
 
-`
 
-ipvsadm -Ln -t 10.0.0.2:443
-Prot LocalAddress:Port Scheduler Flags
-  -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
-TCP  10.0.0.2:443 mh
-  -> 10.0.0.6:443                 Tunnel    1      0          0         
-  -> 10.0.0.7:443                 Tunnel    1      0          0         
-  -> 10.0.0.8:443                 Tunnel    1      0          0
-
-`
+![](2024-12-31-IPVS-IPIP-FLOW.png)
 
 
 5.  The TCP SYN packet from 10.0.0.1:54321 to 10.0.0.2:443 is forwarded to a real server with an IPIP tunnel header, where the outer IP header has the source IP 10.0.0.5 (load balancer's IP) and the destination IP 10.0.0.6 (real server's IP), while the inner IP/TCP header remains unchanged..
