@@ -83,8 +83,7 @@ This request (referred to as request A below) occurred slightly earlier than the
 
 This error message occurs when the size of a packet exceeds the Maximum Transmission Unit (MTU) of the interface that needs to route it. Since IP Virtual Server (IPVS) adds an extra IP header for IPIP tunneling, it increases the packet size by 20 bytes. This change in packet length can lead to issues if the packet is marked with the 'Don't Fragment' (DF) flag. In such cases, IPVS  will send an ICMP Destination Unreachable message back to the client.. 
 
-
-https://elixir.bootlin.com/linux/v5.15.126/source/net/netfilter/ipvs/ip_vs_xmit.c#L239-L249
+[ip_vs_xmit.c](https://elixir.bootlin.com/linux/v5.15.126/source/net/netfilter/ipvs/ip_vs_xmit.c#L239-L249)
 
 ```
 static inline bool ensure_mtu_is_adequate(struct netns_ipvs *ipvs, int skb_af,
