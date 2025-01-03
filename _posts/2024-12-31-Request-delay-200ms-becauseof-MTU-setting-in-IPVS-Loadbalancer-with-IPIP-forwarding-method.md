@@ -146,8 +146,6 @@ Let's examine the source code to understand how Linux handles ICMP Destination U
 
 You can find the relevant code here:
 
-[tcp-shaker](https://github.com/tevino/tcp-shaker)
-
 [tcp_ipv4.c](https://elixir.bootlin.com/linux/v5.15.126/source/net/ipv4/tcp_ipv4.c#L545-L561)
 [icmp.c](https://elixir.bootlin.com/linux/v5.15.126/source/net/ipv4/icmp.c#L858 )
 
@@ -278,24 +276,22 @@ The "destination unreachable: 6940" in the ICMP input histogram represents the s
 In  Question 1, we have the details for how the Linux kernel handles the ICMP packet with type: 3 (ICMP_DEST_UNREACH) and code: 4 (ICMP_FRAG_NEEDED). 
 It can be handled in tcp_v4_mtu_reduced(struct sock *sk)
 
-https://elixir.bootlin.com/linux/v5.15.126/source/net/ipv4/tcp_ipv4.c#L555
-https://elixir.bootlin.com/linux/v5.15.126/source/net/ipv4/tcp_ipv4.c#L341-L374
+[tcp_ipv4.c](https://elixir.bootlin.com/linux/v5.15.126/source/net/ipv4/tcp_ipv4.c#L555)
+[tcp_ipv4.c](https://elixir.bootlin.com/linux/v5.15.126/source/net/ipv4/tcp_ipv4.c#L341-L374)
 
 OR
-tcp_tsq_write(struct sock *sk)
-https://elixir.bootlin.com/linux/v5.15.126/source/net/ipv4/tcp_ipv4.c#L557
-https://elixir.bootlin.com/linux/v5.15.126/source/net/ipv4/tcp_output.c#L1025
-https://elixir.bootlin.com/linux/v5.15.126/source/net/ipv4/tcp_output.c#L1014-L1020
+
+[tcp.c](https://elixir.bootlin.com/linux/v5.15.126/source/net/ipv4/tcp.c#L1463)
+[sock.c](https://elixir.bootlin.com/linux/v5.15.126/source/net/core/sock.c#L3241)
+[tcp_output.c](https://elixir.bootlin.com/linux/v5.15.126/source/net/ipv4/tcp_output.c#L1112-L1115)
+
 
 This is based on the held status of the socket 
-https://elixir.bootlin.com/linux/v5.15.126/source/net/ipv4/tcp_ipv4.c#L554
+[tcp_ipv4.c](https://elixir.bootlin.com/linux/v5.15.126/source/net/ipv4/tcp_ipv4.c#L554)
 
+From the tcpdump, request A triggers TCP retransmission, which helps reduce delay duration. However, request B does not trigger TCP retransmission, resulting in a delay of more than 200ms.
 
-From the tcpdump, the request A has the tcp retransmission triggered and it helps for the delay duration. But request B doesn't have  tcp retransmission triggered, and it is being delayed for more than 200ms. 
-
-So we need to check for  how the ICMP packet was handled which was triggered by request B and why it was delayed for more than 200ms. 
-
-Check for how this ICMP packet handled in Linux kernel
+To understand how the ICMP packet triggered by request B is handled and why it experiences a delay of over 200ms, we need to examine how this ICMP packet is processed in the Linux kernel:
 
 ```
         b'tcp_v4_err+0x1'
@@ -340,12 +336,12 @@ Check for how this ICMP packet handled in Linux kernel
 
 ```
 
-And if you trace for more, in the function tcp_v4_err(), the packet is handled by tcp_v4_mtu_reduced()  in tcp_v4_err().  This is still in the packet send context, which means that the socket is still held by the userspace, so tcp_v4_mtu_reduced() will not be called directly.
+Upon further tracing, in the function tcp_v4_err(), the packet is handled by tcp_v4_mtu_reduced(). This occurs while the packet is still in the send context, meaning the socket is still held by the userspace, so tcp_v4_mtu_reduced() is not called directly.
 
-The tcp_v4_mtu_reduced() is called when it tries to release the socket by  release_sock(). In the tcp_v4_mtu_reduced(), it will call tcp_simple_retransmit() https://elixir.bootlin.com/linux/v5.15.126/source/net/ipv4/tcp_ipv4.c#L372 but the packet is not sent out, so tcp retransmission will not be triggered in this scenario unlock request A. 
-https://elixir.bootlin.com/linux/v5.15.126/source/net/ipv4/tcp_input.c#L2770
+tcp_v4_mtu_reduced() is invoked when the socket is released by release_sock(). In tcp_v4_mtu_reduced(), tcp_simple_retransmit() is called [tcp_simple_retransmit()](https://elixir.bootlin.com/linux/v5.15.126/source/net/ipv4/tcp_ipv4.c#L372), but the packet is not sent out, so TCP retransmission is not triggered in this scenario, unlike request A [tcp_input.c](https://elixir.bootlin.com/linux/v5.15.126/source/net/ipv4/tcp_input.c#L2770).
 
-And after trace for more, in this condition, the packet will be sent again during the handling of the tcp probe timer, which makes it take more than 200ms. 
+
+Upon further tracing, in this condition, the packet is sent again during the handling of the TCP probe timer, resulting in a delay of more than 200ms.
 
 
 ```
@@ -374,17 +370,17 @@ And after trace for more, in this condition, the packet will be sent again durin
 
 
 
-## Question 4:  If the route MTU cached changed in the fly, does it impact the connections that already established
+## Question 4:  If the route MTU cache changes on the fly, does it impact connections that are already established?
 
 
 
-From the tcpdump files of request A and request B, we can see that this impacts the new connections. But does it impact the connections that already established with MSS negotiated with MTU 1480?  
+From the tcpdump files for request A and request B, we can observe that this impacts new connections. But does it affect connections that are already established with MSS negotiated with an MTU of 1480?
 
-Unfortunately, the existing traffic will be impacted even if the MSS is negotiated with MTU 1480.
+Unfortunately, existing traffic will be impacted even if the MSS is negotiated with an MTU of 1480.
 
-The mss is checked time to time during msg send in the tcp stack https://elixir.bootlin.com/linux/v5.15.126/source/net/ipv4/tcp_output.c#L1823
+The MSS is periodically checked during message sending in the TCP stack: [tcp_output.c](https://elixir.bootlin.com/linux/v5.15.126/source/net/ipv4/tcp_output.c#L1823)
 
-If the route MTU expires (route MTU will be cached for 600s by default), then MSS will be changed back from 1440 to 1460, and then the following request may also have this 200ms delay issue. 
+If the route MTU expires (the route MTU is cached for 600 seconds by default), the MSS will change back from 1440 （MTU 1480) to 1460 (MTU 1500). Consequently, subsequent requests may also experience the 200ms delay issue. 
 
 
 
