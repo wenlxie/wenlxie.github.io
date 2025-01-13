@@ -58,7 +58,7 @@ This is the tcpdump file captured from the 'lo' and 'eth0' interfaces on the cli
 
 -  Packet number 259044 is the first packet sent from 10.0.0.1 to 10.0.0.2. The timestamp is 09:05:53.638466, indicating a delay of approximately 207.76 ms compared to the timestamp 09:05:53.430710 of packet number 257858.
 
-But the strange thing is, there was another request almost at the same time, but it exhibited different behavior. 
+The strange thing is, there was another request almost at the same time, it exhibited different behavior. 
 
 ![](/assets/2024-12-31-TCPDUMP-request-A.png)
 
@@ -240,7 +240,7 @@ Let's trace the kernel stack of the function icmp_send(skb, ICMP_DEST_UNREACH, I
 
 From the call stack, we can see that it checks the route MTU and attempts to perform IP fragmentation. If the DF (Don't Fragment) bit is set in the IP header, the kernel will send an ICMP packet with type 3 (ICMP_DEST_UNREACH) and code 4 (ICMP_FRAG_NEEDED).
 
-There were two requests occurring almost simultaneously. The first request triggers the ICMP Destination Unreachable packet from the load balancer, which then changes the route MTU to 1480. The second request performs MSS (Maximum Segment Size) negotiation based on an MTU of 1500, but the route MTU has already been changed to 1480. Thus, when the packet length exceeds 1500, an ICMP packet with type 3 (ICMP_DEST_UNREACH) and code 4 (ICMP_FRAG_NEEDED) is sent from the kernel with the source IP equal to the destination IP.
+There were two requests occurring almost simultaneously. The request A triggers the ICMP Destination Unreachable packet from the load balancer, which then changes the route MTU to 1480. The request B also performs MSS (Maximum Segment Size) negotiation based on an MTU of 1500(while the route MTU has already been changed to 1480 because of request A). Thus, when the packet length exceeds 1500, an ICMP packet with type 3 (ICMP_DEST_UNREACH) and code 4 (ICMP_FRAG_NEEDED) is sent from the kernel with the source IP equal to the destination IP.
 
 If we examine the statistics in the Linux kernel using netstat, we can see some relevant data:
 ```
@@ -333,7 +333,7 @@ Upon further tracing, in the function tcp_v4_err(), the packet is handled by tcp
 tcp_v4_mtu_reduced() is invoked when the socket is released by release_sock(). In tcp_v4_mtu_reduced(), tcp_simple_retransmit() is called [tcp_simple_retransmit()](https://elixir.bootlin.com/linux/v5.15.126/source/net/ipv4/tcp_ipv4.c#L372), but the packet is not sent out, so TCP retransmission is not triggered in this scenario, unlike request A [tcp_input.c](https://elixir.bootlin.com/linux/v5.15.126/source/net/ipv4/tcp_input.c#L2770).
 
 
-Upon further tracing, in this condition, the packet is sent again during the handling of the TCP probe timer, resulting in a delay of more than 200ms.
+In such scenario, the packet, from the request B, instead be sent in TCP retransmissionis triggered by ICMP, it is sent again during the handling of the TCP probe timer, resulting in a delay of more than 200ms.
 
 
 ```
