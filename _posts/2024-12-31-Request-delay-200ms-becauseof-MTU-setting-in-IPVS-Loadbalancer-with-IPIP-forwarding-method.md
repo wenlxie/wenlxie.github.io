@@ -10,7 +10,7 @@ excerpt: IPVS IPIP ICMP LINUX
 
 ## Backgroud
 
-In our network environment, we use IPVS as a load balancer to provide virtual services, and we use the IPIP protocol to preserve client IPs. The traffic flow is as follows:
+IPVS can be used as a load balancer to provide virtual services, and it is common to use the IPIP protocol to preserve client IPs. The typical traffic flow is as follows:
 
 ![](/assets/2024-12-31-IPVS-IPIP-FLOW.png)
 
